@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
-"""Post the next ready item from content/manifest.json to the Little Muse page.
+"""Post the next ready item from content/manifest.json to the Facebook Page.
 
 Reads content/state.json for the queue index, posts one item via the
 Facebook Graph API, then advances the index. Exits 0 without posting when
 the queue is empty or the next item is not ready yet.
+
+Videos are posted as REELS via the 3-step video_reels upload flow.
 """
 import json
 import os
@@ -42,6 +44,53 @@ def api_post_media(edge, filepath, text_field, text):
     return json.loads(proc.stdout)
 
 
+def api_post_reel(filepath, description):
+    """Post a video as a Facebook Reel via the 3-step video_reels flow."""
+    # Step 1: Initialize upload session
+    data = urllib.parse.urlencode(
+        {"upload_phase": "start", "access_token": TOKEN}
+    ).encode()
+    req = urllib.request.Request(
+        f"{GRAPH}/{PAGE_ID}/video_reels", data=data, method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        init = json.loads(resp.read().decode("utf-8"))
+    if "error" in init:
+        print("Reels init error:", json.dumps(init["error"], indent=2))
+        sys.exit(1)
+    video_id = init["video_id"]
+    upload_url = init["upload_url"]
+    print(f"Reels upload session started: video_id={video_id}")
+
+    # Step 2: Upload the video file to rupload.facebook.com
+    file_size = os.path.getsize(filepath)
+    cmd = [
+        "curl", "-sS", "-X", "POST", upload_url,
+        "-H", f"Authorization: OAuth {TOKEN}",
+        "-H", "offset: 0",
+        "-H", f"file_size: {file_size}",
+        "--data-binary", f"@{filepath}",
+    ]
+    proc = subprocess.run(cmd, capture_output=True, text=True, timeout=900)
+    if proc.returncode != 0:
+        print("Reels upload failed:", proc.stderr.strip())
+        sys.exit(1)
+    print("Reels file uploaded.")
+
+    # Step 3: Finish and publish
+    data = urllib.parse.urlencode({
+        "upload_phase": "finish",
+        "video_id": video_id,
+        "description": description,
+        "access_token": TOKEN,
+    }).encode()
+    req = urllib.request.Request(
+        f"{GRAPH}/{PAGE_ID}/video_reels", data=data, method="POST"
+    )
+    with urllib.request.urlopen(req, timeout=60) as resp:
+        return json.loads(resp.read().decode("utf-8"))
+
+
 def main():
     if not TOKEN:
         print("FB_PAGE_TOKEN secret is missing.")
@@ -71,7 +120,7 @@ def main():
     elif kind == "image":
         result = api_post_media("photos", item["file"], "caption", caption)
     elif kind == "video":
-        result = api_post_media("video_reels", item["file"], "description", caption)
+        result = api_post_reel(item["file"], caption)
     else:
         print(f"Unknown item type: {kind}")
         sys.exit(1)
