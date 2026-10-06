@@ -1,9 +1,8 @@
 {
   "items": [
     {
-      "type": "video",
-      "file": "content/media/test-poodle-reel-01.mp4",
-      "caption": "Poodle vs the FLOPPING FISH! 🐩🐟 One sniff and... BOING! Watch till the end! 😂 #TinyPoodle #Poodle #FunnyDog #CuteDog #DogReaction #Puppy #ViralPets #AIGenerated",
+      "type": "text",
+      "caption": "Test post from Little Muse! 🐩 If you can see this, the auto-posting is working! #Test",
       "ready": true
     }
   ]
