@@ -71,7 +71,7 @@ def main():
     elif kind == "image":
         result = api_post_media("photos", item["file"], "caption", caption)
     elif kind == "video":
-        result = api_post_media("videos", item["file"], "description", caption)
+        result = api_post_media("video_reels", item["file"], "description", caption)
     else:
         print(f"Unknown item type: {kind}")
         sys.exit(1)
